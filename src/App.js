@@ -12,6 +12,9 @@ function App() {
         <p>
           Hehe First Deployed project cuy.
         </p>
+        <p>
+          Lets go create proper Todo-app.
+        </p>
         <a
           className="App-link"
           href="https://reactjs.org"
