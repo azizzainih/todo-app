@@ -257,9 +257,8 @@
 // export default TodoApp;
 
 import './App.css';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, X } from 'lucide-react';
-import { supabase } from './supabaseClient';
 
 const TodoApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -296,51 +295,21 @@ const TodoApp = () => {
     });
   };
 
-  const loadTodos = async (date) => {
+  const addTodo = (date) => {
     const dateKey = date.toISOString().split('T')[0];
-    const { data, error } = await supabase.from('todos').select('*').eq('date', dateKey);
-
-    if (error) {
-      console.error('Error loading todos:', error.message);
-      return [];
-    }
+    const newTodo = {
+      id: Date.now(),
+      checked: false,
+      task: '',
+    };
 
     setTodos((prev) => ({
       ...prev,
-      [dateKey]: data,
+      [dateKey]: [...(prev[dateKey] || []), newTodo], // Ensure the array exists
     }));
   };
 
-  useEffect(() => {
-    loadTodos(selectedDate);
-    loadTodos(getTomorrowDate(selectedDate));
-  }, [selectedDate]);
-
-  const addTodo = async (date) => {
-    const dateKey = date.toISOString().split('T')[0];
-    const newTodo = { date: dateKey, checked: false, task: '' };
-
-    const { data, error } = await supabase.from('todos').insert([newTodo]);
-
-    if (error) {
-      console.error('Error adding todo:', error.message);
-      return;
-    }
-
-    setTodos((prev) => ({
-      ...prev,
-      [dateKey]: [...(prev[dateKey] || []), data[0]],
-    }));
-  };
-
-  const updateTodo = async (date, todoId, value) => {
-    const { error } = await supabase.from('todos').update({ task: value }).eq('id', todoId);
-
-    if (error) {
-      console.error('Error updating todo:', error.message);
-      return;
-    }
-
+  const updateTodo = (date, todoId, value) => {
     const dateKey = date.toISOString().split('T')[0];
     setTodos((prev) => ({
       ...prev,
@@ -350,33 +319,17 @@ const TodoApp = () => {
     }));
   };
 
-  const toggleTodo = async (date, todoId) => {
+  const toggleTodo = (date, todoId) => {
     const dateKey = date.toISOString().split('T')[0];
-    const todo = todos[dateKey].find((t) => t.id === todoId);
-
-    const { error } = await supabase.from('todos').update({ checked: !todo.checked }).eq('id', todoId);
-
-    if (error) {
-      console.error('Error toggling todo:', error.message);
-      return;
-    }
-
     setTodos((prev) => ({
       ...prev,
-      [dateKey]: prev[dateKey].map((t) =>
-        t.id === todoId ? { ...t, checked: !t.checked } : t
+      [dateKey]: prev[dateKey].map((todo) =>
+        todo.id === todoId ? { ...todo, checked: !todo.checked } : todo
       ),
     }));
   };
 
-  const removeTodo = async (date, todoId) => {
-    const { error } = await supabase.from('todos').delete().eq('id', todoId);
-
-    if (error) {
-      console.error('Error removing todo:', error.message);
-      return;
-    }
-
+  const removeTodo = (date, todoId) => {
     const dateKey = date.toISOString().split('T')[0];
     setTodos((prev) => ({
       ...prev,
@@ -386,8 +339,8 @@ const TodoApp = () => {
 
   const TodoList = ({ date }) => {
     const dateKey = date.toISOString().split('T')[0];
-    const dateTodos = todos[dateKey] || [];
-
+    const dateTodos = todos[dateKey] || []; // Ensure it's always an array
+  
     const completedCount = dateTodos.filter((todo) => todo.checked).length;
     const totalCount = dateTodos.length;
     const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -396,7 +349,10 @@ const TodoApp = () => {
       <div className="todo-list">
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progressPercentage}%` }}></div>
+            <div
+              className="progress-fill"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
           </div>
           <span className="progress-text">
             {completedCount}/{totalCount} ({progressPercentage}%)
@@ -430,7 +386,10 @@ const TodoApp = () => {
                   />
                 </td>
                 <td>
-                  <button onClick={() => removeTodo(date, todo.id)} className="remove-todo-btn">
+                  <button
+                    onClick={() => removeTodo(date, todo.id)}
+                    className="remove-todo-btn"
+                  >
                     <X size={16} />
                   </button>
                 </td>
@@ -496,7 +455,10 @@ const TodoApp = () => {
             <ChevronLeft size={16} />
           </button>
           <span>
-            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {currentMonth.toLocaleDateString('en-US', { 
+              month: 'long', 
+              year: 'numeric' 
+            })}
           </span>
           <button onClick={handleNextMonth} className="nav-btn">
             <ChevronRight size={16} />
@@ -504,9 +466,7 @@ const TodoApp = () => {
         </div>
         <div className="calendar-grid">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="calendar-weekday">
-              {day}
-            </div>
+            <div key={day} className="calendar-weekday">{day}</div>
           ))}
           {days}
         </div>
@@ -521,7 +481,10 @@ const TodoApp = () => {
           <button onClick={handlePrevDay} className="nav-btn">
             <ChevronLeft />
           </button>
-          <button onClick={() => setShowCalendar(!showCalendar)} className="nav-btn">
+          <button
+            onClick={() => setShowCalendar(!showCalendar)}
+            className="nav-btn"
+          >
             <Calendar size={16} />
           </button>
           <button onClick={handleNextDay} className="nav-btn">
@@ -530,17 +493,17 @@ const TodoApp = () => {
         </div>
         {showCalendar && (
           <div className="calendar-popup">
-            <CalendarView onSelect={(date) => setSelectedDate(date)} />
+            <CalendarView onSelect={setSelectedDate} />
           </div>
         )}
       </div>
-      <div className="card-container">
-        <div className="card">
-          <h2>{formatDate(selectedDate)}</h2>
+      <div className="cards-container">
+        <div className="date-card">
+          <h2 className="date-header">{formatDate(selectedDate)}</h2>
           <TodoList date={selectedDate} />
         </div>
-        <div className="card">
-          <h2>{formatDate(getTomorrowDate(selectedDate))}</h2>
+        <div className="date-card">
+          <h2 className="date-header">{formatDate(getTomorrowDate(selectedDate))}</h2>
           <TodoList date={getTomorrowDate(selectedDate)} />
         </div>
       </div>
