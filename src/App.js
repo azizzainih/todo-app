@@ -265,6 +265,7 @@ const TodoApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [todos, setTodos] = useState({});
   const [loading, setLoading] = useState(false);
+  
 
   const getTomorrowDate = (date) => {
     const tomorrow = new Date(date);
@@ -295,6 +296,25 @@ const TodoApp = () => {
     setLoading(false);
   };
 
+  // const addTodo = async (date) => {
+  //   const dateKey = formatDateKey(date);
+  //   const newTodo = {
+  //     date: dateKey,
+  //     task: '',
+  //     checked: false,
+  //   };
+
+  //   const { data, error } = await supabase.from('todos').insert([newTodo]);
+
+  //   if (error) {
+  //     console.error('Error adding todo:', error);
+  //   } else {
+  //     setTodos((prev) => ({
+  //       ...prev,
+  //       [dateKey]: [...(prev[dateKey] || []), data[0]],
+  //     }));
+  //   }
+  // };
   const addTodo = async (date) => {
     const dateKey = formatDateKey(date);
     const newTodo = {
@@ -302,18 +322,28 @@ const TodoApp = () => {
       task: '',
       checked: false,
     };
-
-    const { data, error } = await supabase.from('todos').insert([newTodo]);
-
-    if (error) {
-      console.error('Error adding todo:', error);
-    } else {
-      setTodos((prev) => ({
-        ...prev,
-        [dateKey]: [...(prev[dateKey] || []), data[0]],
-      }));
+  
+    try {
+      const { data, error } = await supabase.from('todos').insert([newTodo]).select();
+  
+      if (error) {
+        console.error('Error adding todo:', error);
+        return;
+      }
+  
+      // Safely update the state with the new todo
+      setTodos((prev) => {
+        const currentTodos = prev[dateKey] || []; // Ensure that currentTodos is always an array
+        return {
+          ...prev,
+          [dateKey]: [...currentTodos, ...data], // Add the new todo to the existing ones
+        };
+      });
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
   };
+  
 
   const updateTodo = async (date, todoId, value) => {
     const { error } = await supabase
