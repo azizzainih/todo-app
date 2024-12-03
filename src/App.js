@@ -445,63 +445,195 @@ const TodoApp = () => {
     fetchTodos();
   }, [selectedDate]);
 
-  const TodoList = ({ date }) => {
-    const dateKey = formatDateKey(date);
-    const dateTodos = todos[dateKey] || [];
+  // const TodoList = ({ date }) => {
+  //   const dateKey = formatDateKey(date);
+  //   const dateTodos = todos[dateKey] || [];
 
+  //   return (
+  //     <div className="todo-list">
+  //       {loading ? (
+  //         <p>Loading...</p>
+  //       ) : (
+  //         <>
+  //           <table className="todo-table">
+  //             <thead>
+  //               <tr>
+  //                 <th>Done</th>
+  //                 <th>Task</th>
+  //                 <th>Actions</th>
+  //               </tr>
+  //             </thead>
+  //             <tbody>
+  //               {dateTodos.map((todo) => (
+  //                 <tr key={todo.id} className={todo.checked ? 'completed-row' : ''}>
+  //                   <td>
+  //                     <input
+  //                       type="checkbox"
+  //                       checked={todo.checked}
+  //                       onChange={() => toggleTodo(date, todo.id, todo.checked)}
+  //                     />
+  //                   </td>
+  //                   <td>
+  //                     <input
+  //                       type="text"
+  //                       defaultValue={todo.task}
+  //                       onBlur={(e) => updateTodo(date, todo.id, e.target.value)}
+  //                       className="todo-input"
+  //                     />
+  //                   </td>
+  //                   <td>
+  //                     <button
+  //                       onClick={() => removeTodo(date, todo.id)}
+  //                       className="remove-todo-btn"
+  //                     >
+  //                       <X size={16} />
+  //                     </button>
+  //                   </td>
+  //                 </tr>
+  //               ))}
+  //             </tbody>
+  //           </table>
+  //           <button onClick={() => addTodo(date)} className="add-todo-btn">
+  //             <Plus size={16} /> Add Todo
+  //           </button>
+  //         </>
+  //       )}
+  //     </div>
+  //   );
+  // };
+
+  const TodoList = ({ date }) => {
+    const [dateTodos, setDateTodos] = useState([]);
+    const dateKey = formatDateKey(date);
+  
+    useEffect(() => {
+      // Fetch data whenever the date changes
+      const fetchTodos = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('todos')
+            .select('*')
+            .eq('date', dateKey)
+            .order('created_at', { ascending: true });
+  
+          if (error) {
+            console.error('Error fetching todos:', error);
+            return;
+          }
+          setDateTodos(data || []);
+        } catch (err) {
+          console.error('Unexpected error:', err);
+        }
+      };
+  
+      fetchTodos();
+    }, [dateKey]); // Trigger fetch when the date changes
+  
+    const addTodo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .insert([{ date: dateKey, task: '', checked: false }])
+          .select();
+  
+        if (error) {
+          console.error('Error adding todo:', error);
+          return;
+        }
+  
+        setDateTodos((prev) => [...prev, ...data]); // Update state with the new todo
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      }
+    };
+  
+    const toggleTodo = async (todoId) => {
+      const targetTodo = dateTodos.find((todo) => todo.id === todoId);
+      if (!targetTodo) return;
+  
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .update({ checked: !targetTodo.checked })
+          .eq('id', todoId)
+          .select();
+  
+        if (error) {
+          console.error('Error toggling todo:', error);
+          return;
+        }
+  
+        setDateTodos((prev) =>
+          prev.map((todo) =>
+            todo.id === todoId ? { ...todo, checked: !todo.checked } : todo
+          )
+        );
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      }
+    };
+  
+    const removeTodo = async (todoId) => {
+      try {
+        const { error } = await supabase.from('todos').delete().eq('id', todoId);
+  
+        if (error) {
+          console.error('Error removing todo:', error);
+          return;
+        }
+  
+        setDateTodos((prev) => prev.filter((todo) => todo.id !== todoId));
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      }
+    };
+  
     return (
       <div className="todo-list">
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <>
-            <table className="todo-table">
-              <thead>
-                <tr>
-                  <th>Done</th>
-                  <th>Task</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dateTodos.map((todo) => (
-                  <tr key={todo.id} className={todo.checked ? 'completed-row' : ''}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={todo.checked}
-                        onChange={() => toggleTodo(date, todo.id, todo.checked)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        defaultValue={todo.task}
-                        onBlur={(e) => updateTodo(date, todo.id, e.target.value)}
-                        className="todo-input"
-                      />
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => removeTodo(date, todo.id)}
-                        className="remove-todo-btn"
-                      >
-                        <X size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button onClick={() => addTodo(date)} className="add-todo-btn">
-              <Plus size={16} /> Add Todo
-            </button>
-          </>
-        )}
+        {/* Add task UI */}
+        <button onClick={addTodo} className="add-todo-btn">
+          Add Todo
+        </button>
+  
+        {/* Task table */}
+        <table>
+          <thead>
+            <tr>
+              <th>Done</th>
+              <th>Task</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dateTodos.map((todo) => (
+              <tr key={todo.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={todo.checked}
+                    onChange={() => toggleTodo(todo.id)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    defaultValue={todo.task}
+                    onBlur={(e) =>
+                      updateTodo(date, todo.id, e.target.value)
+                    }
+                  />
+                </td>
+                <td>
+                  <button onClick={() => removeTodo(todo.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   };
-
+  
   return (
     <div className="app-container">
       <div className="nav-container">
