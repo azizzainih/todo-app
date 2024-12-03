@@ -159,3 +159,88 @@
   color: #475569;
   border-color: #cbd5e1;
 }
+.todo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.todo-table th,
+.todo-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.todo-table th {
+  background-color: #f4f4f4;
+}
+
+.todo-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 4px;
+  background: transparent;
+}
+
+.todo-input:focus {
+  outline: 1px solid #ccc;
+}
+
+.remove-todo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ff5a5f;
+}
+
+.add-todo-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.add-todo-btn:hover {
+  background-color: #0056b3;
+}
+.progress-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 10px;
+  background-color: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-right: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #555;
+}
+.completed-row {
+  background-color: #d4edda; /* Light green background */
+  color: #155724; /* Dark green text for better visibility */
+}
+
+.completed-row .todo-input {
+  color: #155724;
+}
