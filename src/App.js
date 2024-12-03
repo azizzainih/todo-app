@@ -345,32 +345,92 @@ const TodoApp = () => {
   };
   
 
-  const updateTodo = async (date, todoId, value) => {
-    const { error } = await supabase
-      .from('todos')
-      .update({ task: value })
-      .eq('id', todoId);
+  // const updateTodo = async (date, todoId, value) => {
+  //   const { error } = await supabase
+  //     .from('todos')
+  //     .update({ task: value })
+  //     .eq('id', todoId);
 
-    if (error) {
-      console.error('Error updating todo:', error);
-    } else {
-      fetchTodos(); // Refresh todos
+  //   if (error) {
+  //     console.error('Error updating todo:', error);
+  //   } else {
+  //     fetchTodos(); // Refresh todos
+  //   }
+  // };
+
+  const updateTodo = async (date, todoId, newValue) => {
+    const dateKey = formatDateKey(date);
+  
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .update({ task: newValue })
+        .eq('id', todoId)
+        .select();
+  
+      if (error) {
+        console.error('Error updating todo:', error);
+        return;
+      }
+  
+      // Update the state while preserving the order
+      setTodos((prev) => ({
+        ...prev,
+        [dateKey]: prev[dateKey].map((todo) =>
+          todo.id === todoId ? { ...todo, task: newValue } : todo
+        ),
+      }));
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
   };
+  
+  // const toggleTodo = async (date, todoId, checked) => {
+  //   const { error } = await supabase
+  //     .from('todos')
+  //     .update({ checked: !checked })
+  //     .eq('id', todoId);
 
-  const toggleTodo = async (date, todoId, checked) => {
-    const { error } = await supabase
-      .from('todos')
-      .update({ checked: !checked })
-      .eq('id', todoId);
+  //   if (error) {
+  //     console.error('Error toggling todo:', error);
+  //   } else {
+  //     fetchTodos(); // Refresh todos
+  //   }
+  // };
 
-    if (error) {
-      console.error('Error toggling todo:', error);
-    } else {
-      fetchTodos(); // Refresh todos
+  const toggleTodo = async (date, todoId) => {
+    const dateKey = formatDateKey(date);
+  
+    try {
+      // Find the target task
+      const targetTask = todos[dateKey].find((todo) => todo.id === todoId);
+      if (!targetTask) return;
+  
+      // Toggle the checked status
+      const { data, error } = await supabase
+        .from('todos')
+        .update({ checked: !targetTask.checked })
+        .eq('id', todoId)
+        .select();
+  
+      if (error) {
+        console.error('Error toggling todo:', error);
+        return;
+      }
+  
+      // Update the state while preserving the order
+      setTodos((prev) => ({
+        ...prev,
+        [dateKey]: prev[dateKey].map((todo) =>
+          todo.id === todoId ? { ...todo, checked: !todo.checked } : todo
+        ),
+      }));
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
   };
-
+  
+  
   const removeTodo = async (date, todoId) => {
     const { error } = await supabase.from('todos').delete().eq('id', todoId);
 
