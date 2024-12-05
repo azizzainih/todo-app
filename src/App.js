@@ -565,23 +565,61 @@
 // export default TodoApp;
 
 import './App.css';
+import './CalendarPicker.css';
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, X } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { supabase } from './supabaseClient';
+import CalendarPicker from './CalendarPicker';
 
 const TodoApp = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  
   const [todos, setTodos] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const UTC_OFFSET = 7;
 
+  const getLocalDate = (date = new Date()) => {
+    const utcDate = new Date(date);
+    utcDate.setUTCHours(utcDate.getUTCHours() + UTC_OFFSET);
+    return new Date(utcDate.toISOString().split('T')[0]);
+  };
+  
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+  
   const getTomorrowDate = (date) => {
-    const tomorrow = new Date(date);
+    const tomorrow = getLocalDate(date);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow;
   };
 
-  const formatDateKey = (date) => date.toISOString().split('T')[0];
+  const getDateType = (date) => {
+    const today = getLocalDate();
+    const cardDate = new Date(date);
+    
+    // Reset time components for accurate date comparison
+    today.setHours(0, 0, 0, 0);
+    cardDate.setHours(0, 0, 0, 0);
+    
+    if (cardDate.getTime() === today.getTime()) {
+      return 'today';
+    } else if (cardDate.getTime() > today.getTime()) {
+      return 'future';
+    } else {
+      return 'past';
+    }
+  };
+
+  const getCardClassName = (date) => {
+    const dateType = getDateType(date);
+    return `date-card ${dateType}-card`;
+  };
+  
+  const formatDateKey = (date) => {
+    const utcDate = new Date(date);
+    utcDate.setUTCHours(UTC_OFFSET, 0, 0, 0);
+    return utcDate.toISOString().split('T')[0];
+  };
 
   const fetchTodos = async () => {
     const dateKey = formatDateKey(selectedDate);
@@ -670,7 +708,12 @@ const TodoApp = () => {
 
   const TodoList = ({ date }) => {
     const dateKey = formatDateKey(date);
-
+    const calculateProgress = () => {
+      if (!todos[dateKey]?.length) return 0;
+      const completed = todos[dateKey].filter(todo => todo.checked).length;
+      return Math.round((completed / todos[dateKey].length) * 100);
+    };
+  
     const addTodo = async () => {
       try {
         const position = todos[dateKey]?.length || 0;
@@ -761,12 +804,82 @@ const TodoApp = () => {
       }
     };
 
+    //return (
+    //   <div className="todo-list">
+    //     <button onClick={addTodo} className="add-todo-btn">
+    //       <Plus className="w-4 h-4" /> Add Todo
+    //     </button>
+    //     <div className="progress-container">
+    //       <div className="progress-bar">
+    //         <div 
+    //           className="progress-fill" 
+    //           style={{ width: `${calculateProgress()}%` }}
+    //         />
+    //       </div>
+    //       <span className="progress-text">{calculateProgress()}%</span>
+    //     </div>
+    //     <Droppable droppableId={dateKey}>
+    //       {(provided) => (
+    //         <div
+    //           ref={provided.innerRef}
+    //           {...provided.droppableProps}
+    //           className="todo-items"
+    //         >
+    //           {todos[dateKey]?.map((todo, index) => (
+    //             <Draggable
+    //               key={todo.id}
+    //               draggableId={todo.id.toString()}
+    //               index={index}
+    //             >
+    //               {(provided, snapshot) => (
+    //                 <div
+    //                   ref={provided.innerRef}
+    //                   {...provided.draggableProps}
+    //                   {...provided.dragHandleProps}
+    //                   className={`todo-item ${snapshot.isDragging ? 'dragging' : ''}`}
+    //                 >
+    //                   <input
+    //                     type="checkbox"
+    //                     checked={todo.checked}
+    //                     onChange={() => toggleTodo(todo.id)}
+    //                     className="todo-checkbox"
+    //                   />
+    //                   <input
+    //                     type="text"
+    //                     defaultValue={todo.task}
+    //                     onBlur={(e) => updateTodo(todo.id, e.target.value)}
+    //                     className="todo-input"
+    //                   />
+    //                   <button
+    //                     onClick={() => removeTodo(todo.id)}
+    //                     className="remove-todo-btn"
+    //                   >
+    //                     <X className="w-4 h-4" />
+    //                   </button>
+    //                 </div>
+    //               )}
+    //             </Draggable>
+    //           ))}
+    //           {provided.placeholder}
+    //         </div>
+    //       )}
+    //     </Droppable>
+    //   </div>
+    // );
     return (
       <div className="todo-list">
         <button onClick={addTodo} className="add-todo-btn">
           <Plus className="w-4 h-4" /> Add Todo
         </button>
-
+        <div className="progress-container">
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${calculateProgress()}%` }}
+            />
+          </div>
+          <span className="progress-text">{calculateProgress()}%</span>
+        </div>
         <Droppable droppableId={dateKey}>
           {(provided) => (
             <div
@@ -785,7 +898,9 @@ const TodoApp = () => {
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className={`todo-item ${snapshot.isDragging ? 'dragging' : ''}`}
+                      className={`todo-item ${snapshot.isDragging ? 'dragging' : ''} ${
+                        todo.checked ? 'completed' : ''
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -827,16 +942,40 @@ const TodoApp = () => {
         <div className="nav-container">
           <div className="nav-controls">
             <button
-              onClick={() => setSelectedDate(new Date(selectedDate.setDate(selectedDate.getDate() - 1)))}
+              onClick={() => {
+                const newDate = getLocalDate(selectedDate);
+                newDate.setDate(newDate.getDate() - 1);
+                setSelectedDate(newDate);
+              }}
               className="nav-btn"
             >
               <ChevronLeft />
             </button>
-            <button className="nav-btn" onClick={fetchTodos}>
-              <Calendar className="w-4 h-4" />
-            </button>
+            <div className="relative inline-block">  {/* Updated this div */}
+              <button 
+                onClick={() => setShowCalendar(prev => !prev)}
+                className="nav-btn"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+              {showCalendar && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2">
+                  <CalendarPicker
+                    onSelectDate={(date) => {
+                      setSelectedDate(date);
+                      setShowCalendar(false);
+                    }}
+                    onClose={() => setShowCalendar(false)}
+                  />
+                </div>
+              )}
+            </div>
             <button
-              onClick={() => setSelectedDate(new Date(selectedDate.setDate(selectedDate.getDate() + 1)))}
+              onClick={() => {
+                const newDate = getLocalDate(selectedDate);
+                newDate.setDate(newDate.getDate() + 1);
+                setSelectedDate(newDate);
+              }}
               className="nav-btn"
             >
               <ChevronRight />
@@ -844,11 +983,11 @@ const TodoApp = () => {
           </div>
         </div>
         <div className="cards-container">
-          <div className="date-card">
+          <div className={getCardClassName(selectedDate)}>
             <h2 className="date-header">{selectedDate.toDateString()}</h2>
             <TodoList date={selectedDate} />
           </div>
-          <div className="date-card">
+          <div className={getCardClassName(getTomorrowDate(selectedDate))}>
             <h2 className="date-header">{getTomorrowDate(selectedDate).toDateString()}</h2>
             <TodoList date={getTomorrowDate(selectedDate)} />
           </div>
