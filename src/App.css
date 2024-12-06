@@ -60,8 +60,26 @@
 
 .date-header {
   margin-bottom: 1.5rem;
+  margin-top: 0rem;
   font-size: 1.25rem;
   font-weight: 600;
+  display: flex;
+  justify-content: space-between; /* Spread items across the row */
+  align-items: baseline; /* Align text nicely */
+  width: 100%; /* Ensure the header stretches across the full width */
+  box-sizing: border-box; /* Include padding/border in width calculation */
+}
+
+.weekday {
+  font-size: 1.5rem; /* Slightly larger for the weekday */
+  font-weight: 700;  /* Make it bolder */
+  margin-right: 1rem; /* Space between weekday and date */
+}
+
+.date {
+  font-size: 1.25rem;
+  font-weight: 400;
+  text-align: right;
 }
 
 .todo-list {
@@ -154,7 +172,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 0.1rem;
 }
 
 .progress-bar {
@@ -299,4 +317,137 @@
 .todo-item.dragging {
   background: var(--border-color);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.05rem;
+  background: var(--background-color);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  /* Optimize transitions for better performance */
+  will-change: background-color, border-color;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.todo-item.completed {
+  background-color: #dcfce7;
+  border-color: #86efac;
+}
+
+.todo-item.completed .todo-input {
+  color: #166534;
+  text-decoration: line-through;
+  /* Make text color transition smooth */
+  transition: color 0.15s ease;
+}
+
+.todo-item .todo-input {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  border: 0px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  background-color: transparent;
+  color: inherit;
+  /* Add transition for color changes */
+  transition: color 0.15s ease;
+}
+
+/* Optimize checkbox transitions */
+.todo-checkbox {
+  width: 1rem;
+  height: 1rem;
+  transition: background-color 0.15s ease;
+}
+/* Health Tracker Styles - integrated with existing theme */
+.health-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 0.5rem;
+}
+
+.checklist-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.checklist-button {
+  width: 1rem;
+  height: 1rem;
+  border: 0.1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.checklist-button:hover {
+  background: #f7fafc;
+}
+
+.checklist-button.checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-hover-color);
+}
+
+.checklist-label {
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.meal-tracking-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.meal-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meal-label {
+  font-size: 0.875rem;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.meal-input {
+  width: 100%;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background-color);
+  font-size: 0.875rem;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.meal-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: var(--box-shadow);
+}
+
+.meal-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.7;
 }
