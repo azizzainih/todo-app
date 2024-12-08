@@ -1,20 +1,20 @@
-
-import './App.css';
-import './CalendarPicker.css';
+// TodoApp.js (main component)
+import './styles/App.css';
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Plus, X } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { DragDropContext } from 'react-beautiful-dnd';
 import { supabase } from './supabaseClient';
-import CalendarPicker from './CalendarPicker';
+import CalendarPicker from './components/CalendarPicker';
+import HealthTracker from './components/HealthTracker';
+import TodoList from './components/TodoList';
 
 const TodoApp = () => {
-  
   const [todos, setTodos] = useState({});
   const [healthData, setHealthData] = useState({});
-  // const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const UTC_OFFSET = 7;
 
+  // ... keep all your existing date-related utility functions ...
   const getLocalDate = (date = new Date()) => {
     const utcDate = new Date(date);
     utcDate.setUTCHours(utcDate.getUTCHours() + UTC_OFFSET);
@@ -45,7 +45,6 @@ const TodoApp = () => {
       return 'past';
     }
   };
-
   const getCardClassName = (date) => {
     const dateType = getDateType(date);
     return `date-card ${dateType}-card`;
@@ -56,374 +55,443 @@ const TodoApp = () => {
     utcDate.setUTCHours(UTC_OFFSET, 0, 0, 0);
     return utcDate.toISOString().split('T')[0];
   };
-
+  const flattenTodos = (todos, parentId = null) => {
+    let flattened = [];
+    todos.forEach(todo => {
+      flattened.push({ ...todo, parent_id: parentId });
+      if (todo.subtasks?.length) {
+        flattened = flattened.concat(flattenTodos(todo.subtasks, todo.id));
+      }
+    });
+    return flattened;
+  };
+  
+  // const organizeTodos = (flatTodos) => {
+  //   const todoMap = {};
+  //   const rootTodos = [];
+  
+  //   // First, create a map of all todos
+  //   flatTodos.forEach(todo => {
+  //     todoMap[todo.id] = { ...todo, subtasks: [] };
+  //   });
+  
+  //   // Then, organize them into a hierarchy
+  //   flatTodos.forEach(todo => {
+  //     if (todo.parent_id) {
+  //       todoMap[todo.parent_id].subtasks.push(todoMap[todo.id]);
+  //     } else {
+  //       rootTodos.push(todoMap[todo.id]);
+  //     }
+  //   });
+  
+  //   return rootTodos;
+  // };
+  
   const fetchTodos = useCallback(async () => {
     const dateKey = formatDateKey(selectedDate);
     const tomorrowKey = formatDateKey(getTomorrowDate(selectedDate));
+  
+    try {
+      const { data: allTodos, error } = await supabase
+        .from('todos')
+        .select('*')
+        .in('date', [dateKey, tomorrowKey])
+        .order('position');
+  
+      if (error) {
+        console.error('Error fetching todos:', error);
+        return;
+      }
+  
+      // Organize todos into a hierarchy
+      const organizeSubtasks = (todos, parentId = null) => {
+        const result = todos
+          .filter(todo => todo.parent_id === parentId)
+          .map(todo => ({
+            ...todo,
+            subtasks: organizeSubtasks(todos, todo.id)
+          }));
+        return result;
+      };
+  
+      const organizedTodos = {
+        [dateKey]: organizeSubtasks(allTodos.filter(todo => todo.date === dateKey)),
+        [tomorrowKey]: organizeSubtasks(allTodos.filter(todo => todo.date === tomorrowKey))
+      };
+  
+      setTodos(organizedTodos);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  }, [selectedDate, getTomorrowDate]);
+
+  const fetchHealthData = useCallback(async () => {
+    // ... keep existing fetchHealthData implementation ...
+    const dateKey = formatDateKey(selectedDate);
+    const tomorrowKey = formatDateKey(getTomorrowDate(selectedDate));
+    
     try {
       const { data: todayData, error: todayError } = await supabase
-        .from('todos')
+        .from('health_tracking')
         .select('*')
         .eq('date', dateKey)
-        .order('position');
-  
+        .single();
+
       const { data: tomorrowData, error: tomorrowError } = await supabase
-        .from('todos')
+        .from('health_tracking')
         .select('*')
         .eq('date', tomorrowKey)
-        .order('position');
-  
-      if (todayError || tomorrowError) {
-        console.error('Error fetching todos:', todayError || tomorrowError);
-      } else {
-        setTodos({
-          [dateKey]: todayData || [],
-          [tomorrowKey]: tomorrowData || [],
-        });
+        .single();
+
+      const defaultHealth = {
+        vitamins: false,
+        breakfast: '',
+        lunch: '',
+        dinner: ''
+      };
+
+      setHealthData({
+        [dateKey]: todayData || defaultHealth,
+        [tomorrowKey]: tomorrowData || defaultHealth
+      });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  }, [selectedDate, getTomorrowDate]);
+
+  useEffect(() => {
+    fetchTodos();
+    fetchHealthData();
+  }, [fetchTodos, fetchHealthData]);
+
+  const updateHealthData = async (dateKey, field, value) => {
+    setHealthData(prev => ({
+      ...prev,
+      [dateKey]: {
+        ...prev[dateKey],
+        [field]: value
+      }
+    }));
+
+    try {
+      const { error } = await supabase
+        .from('health_tracking')
+        .upsert(
+          {
+            date: dateKey,
+            ...healthData[dateKey],
+            [field]: value
+          },
+          { onConflict: 'date' }
+        );
+
+      if (error) {
+        console.error('Error updating health data:', error);
       }
     } catch (err) {
       console.error('Unexpected error:', err);
     }
-  }, [selectedDate, getTomorrowDate]); // Added getTomorrowDate to dependencies
+  };
+
+  const addTodo = async (dateKey) => {
+    try {
+      const position = todos[dateKey]?.length || 0;
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([{ date: dateKey, task: '', checked: false, position }])
+        .select();
+
+      if (error) {
+        console.error('Error adding todo:', error);
+        return;
+      }
+
+      setTodos(prev => ({
+        ...prev,
+        [dateKey]: [...(prev[dateKey] || []), ...data]
+      }));
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
+
+  const updateTodo = async (dateKey, todoId, newValue) => {
+    // ... keep existing updateTodo implementation ...
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update({ task: newValue })
+        .eq('id', todoId);
+      if (error) {
+        console.error('Error updating todo:', error);
+        return;
+      }
+      setTodos(prev => ({
+        ...prev,
+        [dateKey]: prev[dateKey].map(todo =>
+          todo.id === todoId ? { ...todo, task: newValue } : todo
+        )
+      }));
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
+
+  const toggleTodo = async (dateKey, todoId, level) => {
+    const updateTodoState = (tasks, targetId, newCheckedState) => {
+      return tasks.map(task => {
+        if (task.id === targetId) {
+          // Update the task and all its subtasks
+          const updatedTask = {
+            ...task,
+            checked: newCheckedState
+          };
+          if (task.subtasks?.length) {
+            updatedTask.subtasks = task.subtasks.map(subtask => ({
+              ...subtask,
+              checked: newCheckedState
+            }));
+          }
+          return updatedTask;
+        } else if (task.subtasks?.length) {
+          // Recursively update subtasks
+          return {
+            ...task,
+            subtasks: updateTodoState(task.subtasks, targetId, newCheckedState)
+          };
+        }
+        return task;
+      });
+    };
   
-  useEffect(() => {
-    fetchTodos();
-  }, [fetchTodos]);
+    // Find the current todo and its new state
+    let targetTodo;
+    const findTodo = (tasks) => {
+      for (const task of tasks) {
+        if (task.id === todoId) {
+          targetTodo = task;
+          return;
+        }
+        if (task.subtasks?.length) {
+          findTodo(task.subtasks);
+        }
+      }
+    };
+    findTodo(todos[dateKey]);
+  
+    const newCheckedState = !targetTodo.checked;
+  
+    // Update UI
+    setTodos(prev => ({
+      ...prev,
+      [dateKey]: updateTodoState(prev[dateKey], todoId, newCheckedState)
+    }));
+  
+    try {
+      // Update database
+      const { error } = await supabase
+        .from('todos')
+        .update({ checked: newCheckedState })
+        .eq('id', todoId);
+  
+      if (error) {
+        console.error('Error toggling todo:', error);
+        // Revert UI state on error
+        setTodos(prev => ({
+          ...prev,
+          [dateKey]: updateTodoState(prev[dateKey], todoId, !newCheckedState)
+        }));
+      }
+  
+      // If this is a parent task, update all subtasks in the database
+      if (targetTodo.subtasks?.length) {
+        const subtaskIds = [];
+        const collectSubtaskIds = (tasks) => {
+          tasks.forEach(task => {
+            subtaskIds.push(task.id);
+            if (task.subtasks?.length) {
+              collectSubtaskIds(task.subtasks);
+            }
+          });
+        };
+        collectSubtaskIds(targetTodo.subtasks);
+  
+        const { error: subtaskError } = await supabase
+          .from('todos')
+          .update({ checked: newCheckedState })
+          .in('id', subtaskIds);
+  
+        if (subtaskError) {
+          console.error('Error updating subtasks:', subtaskError);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
 
+  const removeTodo = async (dateKey, todoId) => {
+    try {
+      // First, update the UI optimistically
+      setTodos(prev => {
+        const updateTodos = (todos) => {
+          return todos.map(todo => {
+            // If this todo has subtasks, recursively check them
+            if (todo.subtasks?.length) {
+              return {
+                ...todo,
+                subtasks: updateTodos(todo.subtasks).filter(t => t.id !== todoId)
+              };
+            }
+            return todo;
+          }).filter(todo => todo.id !== todoId); // Filter out the todo if it matches todoId
+        };
+  
+        return {
+          ...prev,
+          [dateKey]: updateTodos(prev[dateKey] || [])
+        };
+      });
+  
+      // Then update the database
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', todoId);
+  
+      if (error) {
+        console.error('Error removing todo:', error);
+        // If there's an error, refetch todos to ensure UI is in sync
+        fetchTodos();
+        return;
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      // On error, refetch todos to ensure UI is in sync
+      fetchTodos();
+    }
+  };
 
+  const addSubtask = async (dateKey, parentId) => {
+    try {
+      // Find the parent task and its current subtasks
+      const findParentTask = (tasks) => {
+        for (const task of tasks) {
+          if (task.id === parentId) {
+            return task;
+          }
+          if (task.subtasks?.length) {
+            const found = findParentTask(task.subtasks);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+  
+      const parentTask = findParentTask(todos[dateKey]);
+      const position = parentTask?.subtasks?.length || 0;
+  
+      const newSubtask = {
+        date: dateKey,
+        task: '',
+        checked: false,
+        parent_id: parentId,
+        position: position
+      };
+  
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([newSubtask])
+        .select();
+  
+      if (error) {
+        console.error('Error adding subtask:', error);
+        return;
+      }
+  
+      setTodos(prev => {
+        const updateSubtasks = (tasks) => {
+          return tasks.map(task => {
+            if (task.id === parentId) {
+              return {
+                ...task,
+                subtasks: [...(task.subtasks || []), ...data]
+              };
+            }
+            if (task.subtasks?.length) {
+              return {
+                ...task,
+                subtasks: updateSubtasks(task.subtasks)
+              };
+            }
+            return task;
+          });
+        };
+  
+        return {
+          ...prev,
+          [dateKey]: updateSubtasks(prev[dateKey] || [])
+        };
+      });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
+  
   const onDragEnd = async (result) => {
     if (!result.destination) return;
-
+  
     const { source, destination } = result;
     const sourceDate = source.droppableId;
     const destDate = destination.droppableId;
-
-    // Create new copy of todos
-    const newTodos = { ...todos };
-
-    // Remove from source array
-    const [removed] = newTodos[sourceDate].splice(source.index, 1);
-    
-    // Add to destination array
-    newTodos[destDate].splice(destination.index, 0, {
-      ...removed,
-      date: destDate
-    });
-
-    // Update positions
-    const updatedTodos = newTodos[destDate].map((todo, index) => ({
-      ...todo,
-      position: index
-    }));
-
-    // Update state optimistically
-    setTodos(newTodos);
-
+  
     try {
-      // Update the moved todo's date and position
+      // Create a deep copy of the current todos
+      const newTodos = JSON.parse(JSON.stringify(todos));
+  
+      // Get the dragged item from the source
+      const draggedItem = newTodos[sourceDate][source.index];
+      
+      // Remove from source
+      newTodos[sourceDate].splice(source.index, 1);
+  
+      // Ensure destination array exists
+      if (!newTodos[destDate]) {
+        newTodos[destDate] = [];
+      }
+  
+      // Add to destination
+      newTodos[destDate].splice(destination.index, 0, {
+        ...draggedItem,
+        date: destDate
+      });
+  
+      // Update state optimistically
+      setTodos(newTodos);
+  
+      // Update database
       await supabase
         .from('todos')
         .update({
           date: destDate,
           position: destination.index
         })
-        .eq('id', removed.id);
-
-      // Update positions of affected todos
-      for (const todo of updatedTodos) {
-        await supabase
+        .eq('id', draggedItem.id);
+  
+      // Update positions in database
+      const updatePromises = newTodos[destDate].map((todo, index) => 
+        supabase
           .from('todos')
-          .update({ position: todo.position })
-          .eq('id', todo.id);
-      }
+          .update({ position: index })
+          .eq('id', todo.id)
+      );
+  
+      await Promise.all(updatePromises);
     } catch (error) {
       console.error('Error updating todos:', error);
       // Revert state on error
       fetchTodos();
     }
-  };
-
-  const fetchHealthData = useCallback(async () => {
-      const dateKey = formatDateKey(selectedDate);
-      const tomorrowKey = formatDateKey(getTomorrowDate(selectedDate));
-      
-      try {
-        const { data: todayData, error: todayError } = await supabase
-          .from('health_tracking')
-          .select('*')
-          .eq('date', dateKey)
-          .single();
-  
-        const { data: tomorrowData, error: tomorrowError } = await supabase
-          .from('health_tracking')
-          .select('*')
-          .eq('date', tomorrowKey)
-          .single();
-  
-        const defaultHealth = {
-          vitamins: false,
-          breakfast: '',
-          lunch: '',
-          dinner: ''
-        };
-  
-        setHealthData({
-          [dateKey]: todayData || defaultHealth,
-          [tomorrowKey]: tomorrowData || defaultHealth
-        });
-      } catch (err) {
-        console.error('Unexpected error:', err);
-      }
-    }, [selectedDate, getTomorrowDate]);
-  
-    useEffect(() => {
-      fetchTodos();
-      fetchHealthData();
-    }, [fetchTodos, fetchHealthData]);
-
-  const TodoList = ({ date }) => {
-    const dateKey = formatDateKey(date);
-
-    const updateHealthData = async (field, value) => {
-      // Update local state immediately
-      setHealthData(prev => ({
-        ...prev,
-        [dateKey]: {
-          ...prev[dateKey],
-          [field]: value
-        }
-      }));
-
-      // Update database silently
-      try {
-        const { error } = await supabase
-          .from('health_tracking')
-          .upsert(
-            {
-              date: dateKey,
-              ...healthData[dateKey],
-              [field]: value
-            },
-            { onConflict: 'date' }
-          );
-
-        if (error) {
-          console.error('Error updating health data:', error);
-        }
-      } catch (err) {
-        console.error('Unexpected error:', err);
-      }
-    };
-
-    const calculateProgress = () => {
-      if (!todos[dateKey]?.length) return 0;
-      const completed = todos[dateKey].filter(todo => todo.checked).length;
-      return Math.round((completed / todos[dateKey].length) * 100);
-    };
-  
-    const addTodo = async () => {
-      try {
-        const position = todos[dateKey]?.length || 0;
-        const { data, error } = await supabase
-          .from('todos')
-          .insert([{ date: dateKey, task: '', checked: false, position }])
-          .select();
-
-        if (error) {
-          console.error('Error adding todo:', error);
-          return;
-        }
-
-        setTodos(prev => ({
-          ...prev,
-          [dateKey]: [...(prev[dateKey] || []), ...data]
-        }));
-      } catch (err) {
-        console.error('Unexpected error:', err);
-      }
-    };
-
-    const updateTodo = async (todoId, newValue) => {
-      try {
-        const { error } = await supabase
-          .from('todos')
-          .update({ task: newValue })
-          .eq('id', todoId);
-
-        if (error) {
-          console.error('Error updating todo:', error);
-          return;
-        }
-
-        setTodos(prev => ({
-          ...prev,
-          [dateKey]: prev[dateKey].map(todo =>
-            todo.id === todoId ? { ...todo, task: newValue } : todo
-          )
-        }));
-      } catch (err) {
-        console.error('Unexpected error:', err);
-      }
-    };
-
-    const toggleTodo = async (todoId) => {
-      // Find the current todo
-      const targetTodo = todos[dateKey].find(todo => todo.id === todoId);
-      const newCheckedState = !targetTodo.checked;
-      
-      // Immediately update UI
-      setTodos(prev => ({
-        ...prev,
-        [dateKey]: prev[dateKey].map(todo =>
-          todo.id === todoId ? { ...todo, checked: newCheckedState } : todo
-        )
-      }));
-  
-      try {
-        // Update database in background
-        const { error } = await supabase
-          .from('todos')
-          .update({ checked: newCheckedState })
-          .eq('id', todoId);
-  
-        if (error) {
-          // If database update fails, revert the UI change
-          console.error('Error toggling todo:', error);
-          setTodos(prev => ({
-            ...prev,
-            [dateKey]: prev[dateKey].map(todo =>
-              todo.id === todoId ? { ...todo, checked: !newCheckedState } : todo
-            )
-          }));
-        }
-      } catch (err) {
-        // Handle any unexpected errors
-        console.error('Unexpected error:', err);
-        // Revert UI change
-        setTodos(prev => ({
-          ...prev,
-          [dateKey]: prev[dateKey].map(todo =>
-            todo.id === todoId ? { ...todo, checked: !newCheckedState } : todo
-          )
-        }));
-      }
-    };
-
-    const removeTodo = async (todoId) => {
-      try {
-        const { error } = await supabase
-          .from('todos')
-          .delete()
-          .eq('id', todoId);
-
-        if (error) {
-          console.error('Error removing todo:', error);
-          return;
-        }
-
-        setTodos(prev => ({
-          ...prev,
-          [dateKey]: prev[dateKey].filter(todo => todo.id !== todoId)
-        }));
-      } catch (err) {
-        console.error('Unexpected error:', err);
-      }
-    };
-    
-    return (
-      <div className="todo-list">
-        <button onClick={addTodo} className="add-todo-btn">
-          <Plus className="w-4 h-4" /> Add Todo
-        </button>
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${calculateProgress()}%` }}
-            />
-          </div>
-          <span className="progress-text">{calculateProgress()}%</span>
-        </div>
-        <div className="health-tracker">
-          <div className="checklist-row">
-            <div className="checklist-item">
-              <input
-                type="checkbox"
-                checked={healthData[dateKey]?.vitamins || false}
-                onChange={(e) => updateHealthData('vitamins', e.target.checked)}
-                className={`checklist-checkbox ${healthData[dateKey]?.vitamins ? 'checked' : ''}`}
-              />
-              <span className="checklist-label">Daily Vitamins</span>
-            </div>
-          </div>
-
-          <div className="meal-tracking-row">
-            {['breakfast', 'lunch', 'dinner'].map((meal) => (
-              <div key={meal} className="meal-input-group">
-                <label className="meal-label">
-                  {meal}
-                </label>
-                <input
-                  type="text"
-                  value={healthData[dateKey]?.[meal] || ''}
-                  onChange={(e) => updateHealthData(meal, e.target.value)}
-                  placeholder={`${meal} meal`}
-                  className="meal-input"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-        <Droppable droppableId={dateKey}>
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="todo-items"
-            >
-              {todos[dateKey]?.map((todo, index) => (
-                <Draggable
-                  key={todo.id}
-                  draggableId={todo.id.toString()}
-                  index={index}
-                >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={`todo-item ${snapshot.isDragging ? 'dragging' : ''} ${
-                        todo.checked ? 'completed' : ''
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={todo.checked}
-                        onChange={() => toggleTodo(todo.id)}
-                        className="todo-checkbox"
-                      />
-                      <input
-                        type="text"
-                        defaultValue={todo.task}
-                        onBlur={(e) => updateTodo(todo.id, e.target.value)}
-                        className="todo-input"
-                      />
-                      <button
-                        onClick={() => removeTodo(todo.id)}
-                        className="remove-todo-btn"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </div>
-    );
   };
 
   return (
@@ -473,20 +541,35 @@ const TodoApp = () => {
           </div>
         </div>
         <div className="cards-container">
-          <div className={getCardClassName(selectedDate)}>
-            <h2 className="date-header">
-              <span className="weekday">{selectedDate.toLocaleDateString('id-ID', { weekday: 'long' })}</span>
-              <span className="date">{selectedDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-            </h2>
-            <TodoList date={selectedDate} />
-          </div>
-          <div className={getCardClassName(getTomorrowDate(selectedDate))}>
-            <h2 className="date-header">
-              <span className="weekday">{getTomorrowDate(selectedDate).toLocaleDateString('id-ID', { weekday: 'long' })}</span>
-              <span className="date">{getTomorrowDate(selectedDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-            </h2>
-            <TodoList date={getTomorrowDate(selectedDate)} />
-          </div>
+          {[selectedDate, getTomorrowDate(selectedDate)].map((date) => {
+            const dateKey = formatDateKey(date);
+            return (
+              <div key={dateKey} className={getCardClassName(date)}>
+                <h2 className="date-header">
+                  <span className="weekday">
+                    {date.toLocaleDateString('id-ID', { weekday: 'long' })}
+                  </span>
+                  <span className="date">
+                    {date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </h2>
+                <HealthTracker
+                  dateKey={dateKey}
+                  healthData={healthData}
+                  updateHealthData={updateHealthData}
+                />
+                <TodoList
+                  dateKey={dateKey}
+                  todos={todos}
+                  onAddTodo={addTodo}
+                  onUpdateTodo={updateTodo}
+                  onToggleTodo={toggleTodo}
+                  onRemoveTodo={removeTodo}
+                  onAddSubtask={addSubtask}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </DragDropContext>
@@ -494,4 +577,3 @@ const TodoApp = () => {
 };
 
 export default TodoApp;
-

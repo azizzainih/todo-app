@@ -56,6 +56,20 @@
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
   padding: 1.5rem;
+  border: 10px double transparent;
+  transition: border-color 0.3s ease;
+}
+
+.today-card {
+  border-color: #3b82f6;
+}
+
+.future-card {
+  border-color: #fbbf24;
+}
+
+.past-card {
+  border-color: #94a3b8;
 }
 
 .date-header {
@@ -64,16 +78,16 @@
   font-size: 1.25rem;
   font-weight: 600;
   display: flex;
-  justify-content: space-between; /* Spread items across the row */
-  align-items: baseline; /* Align text nicely */
-  width: 100%; /* Ensure the header stretches across the full width */
-  box-sizing: border-box; /* Include padding/border in width calculation */
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .weekday {
-  font-size: 1.5rem; /* Slightly larger for the weekday */
-  font-weight: 700;  /* Make it bolder */
-  margin-right: 1rem; /* Space between weekday and date */
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-right: 1rem;
 }
 
 .date {
@@ -103,7 +117,7 @@
 }
 
 .add-todo-btn:hover {
-  background: var(--putririmary-hover-color);
+  background: var(--primary-hover-color);
 }
 
 .add-todo-btn:focus {
@@ -118,13 +132,25 @@
 
 .todo-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.75rem;
   padding: 0.05rem;
   background: var(--background-color);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
-  transition: background 0.2s ease;
+  will-change: background-color, border-color;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.todo-item.completed {
+  background-color: #dcfce7;
+  border-color: #86efac;
+}
+
+.todo-item.completed .todo-input {
+  color: #166534;
+  text-decoration: line-through;
+  transition: color 0.15s ease;
 }
 
 .todo-item.dragging {
@@ -135,6 +161,7 @@
 .todo-checkbox {
   width: 1rem;
   height: 1rem;
+  transition: background-color 0.15s ease;
 }
 
 .todo-input {
@@ -143,9 +170,9 @@
   border: 0px solid var(--border-color);
   border-radius: var(--border-radius);
   font-size: 0.875rem;
-
-  background-color: transparent; /* Makes the background transparent */
-  color: inherit; /* Ensures the text color is inherited (or you can specify a color like black) */
+  background-color: transparent;
+  color: inherit;
+  transition: color 0.15s ease;
 }
 
 .todo-input:focus {
@@ -256,113 +283,14 @@
 }
 
 .completed-row {
-  background-color: #d4edda; /* Light green background */
-  color: #155724; /* Dark green text for better visibility */
+  background-color: #d4edda;
+  color: #155724;
 }
 
 .completed-row .todo-input {
   color: #155724;
 }
-/* Add these new styles to your existing CSS file */
-.date-card {
-  background: white;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  padding: 1.5rem;
-  border: 10px double transparent;
-  transition: border-color 0.3s ease;
-}
 
-.today-card {
-  border-color: #3b82f6; /* Blue border for today */
-}
-
-.future-card {
-  border-color: #fbbf24; /* Yellow border for future dates */
-}
-
-.past-card {
-  border-color: #94a3b8; /* Gray border for past dates */
-}
-/* Add these new styles to your existing CSS file */
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.05rem;
-  background: var(--background-color);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease;
-}
-
-.todo-item.completed {
-  background-color: #dcfce7; /* Light green background */
-  border-color: #86efac; /* Slightly darker green border */
-}
-
-.todo-item.completed .todo-input {
-  color: #166534; /* Darker green text for better readability */
-  text-decoration: line-through; /* Optional: adds strikethrough to completed tasks */
-}
-
-.todo-item.completed .remove-todo-btn {
-  color: #166534; /* Matching icon color */
-}
-
-.todo-item.completed .remove-todo-btn:hover {
-  color: var(--danger-color);
-}
-
-.todo-item.dragging {
-  background: var(--border-color);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.05rem;
-  background: var(--background-color);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
-  /* Optimize transitions for better performance */
-  will-change: background-color, border-color;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.todo-item.completed {
-  background-color: #dcfce7;
-  border-color: #86efac;
-}
-
-.todo-item.completed .todo-input {
-  color: #166534;
-  text-decoration: line-through;
-  /* Make text color transition smooth */
-  transition: color 0.15s ease;
-}
-
-.todo-item .todo-input {
-  flex: 1;
-  padding: 0.25rem 0.5rem;
-  border: 0px solid var(--border-color);
-  border-radius: var(--border-radius);
-  font-size: 0.875rem;
-  background-color: transparent;
-  color: inherit;
-  /* Add transition for color changes */
-  transition: color 0.15s ease;
-}
-
-/* Optimize checkbox transitions */
-.todo-checkbox {
-  width: 1rem;
-  height: 1rem;
-  transition: background-color 0.15s ease;
-}
-/* Health Tracker Styles - integrated with existing theme */
 .health-tracker {
   display: flex;
   flex-direction: column;
@@ -450,4 +378,114 @@
 .meal-input::placeholder {
   color: var(--text-color);
   opacity: 0.7;
+}
+
+.todo-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-btn:hover {
+  color: var(--primary-color);
+}
+
+.subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  margin-top: 0.05rem;
+}
+
+.add-subtask-btn {
+  padding: 0.025rem;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.todo-item:hover .add-subtask-btn {
+  opacity: 1;
+}
+
+.add-subtask-btn:hover {
+  color: var(--primary-color);
+}
+
+/* Add tree lines */
+.subtasks::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: -0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  background-color: var(--border-color);
+}
+
+.subtasks .todo-item {
+  position: relative;
+}
+
+/* Horizontal line connecting to subtasks */
+.subtasks .todo-item::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  width: 0.5rem;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+/* Adjust spacing for nested elements */
+.todo-input {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  background-color: transparent;
+  color: inherit;
+  transition: color 0.15s ease;
+}
+
+/* Improve visual hierarchy */
+.todo-item.completed {
+  background-color: #dcfce7;
+  border-color: #86efac;
+}
+
+.remove-todo-btn {
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+}
+
+.remove-todo-btn:hover {
+  color: var(--danger-color);
 }

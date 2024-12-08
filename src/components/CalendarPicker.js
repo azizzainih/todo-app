@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import './CalendarPicker.css';
+import '../styles/CalendarPicker.css';
 
 const CalendarPicker = ({ onSelectDate, onClose }) => {
   const UTC_OFFSET = 7; // Same UTC offset as TodoApp
