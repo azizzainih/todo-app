@@ -7,6 +7,7 @@ import { supabase } from './supabaseClient';
 import CalendarPicker from './components/CalendarPicker';
 import HealthTracker from './components/HealthTracker';
 import TodoList from './components/TodoList';
+import Journal from './components/Journal';
 
 const TodoApp = () => {
   const [todos, setTodos] = useState({});
@@ -55,6 +56,7 @@ const TodoApp = () => {
     utcDate.setUTCHours(UTC_OFFSET, 0, 0, 0);
     return utcDate.toISOString().split('T')[0];
   };
+
   const flattenTodos = (todos, parentId = null) => {
     let flattened = [];
     todos.forEach(todo => {
@@ -65,27 +67,6 @@ const TodoApp = () => {
     });
     return flattened;
   };
-  
-  // const organizeTodos = (flatTodos) => {
-  //   const todoMap = {};
-  //   const rootTodos = [];
-  
-  //   // First, create a map of all todos
-  //   flatTodos.forEach(todo => {
-  //     todoMap[todo.id] = { ...todo, subtasks: [] };
-  //   });
-  
-  //   // Then, organize them into a hierarchy
-  //   flatTodos.forEach(todo => {
-  //     if (todo.parent_id) {
-  //       todoMap[todo.parent_id].subtasks.push(todoMap[todo.id]);
-  //     } else {
-  //       rootTodos.push(todoMap[todo.id]);
-  //     }
-  //   });
-  
-  //   return rootTodos;
-  // };
   
   const fetchTodos = useCallback(async () => {
     const dateKey = formatDateKey(selectedDate);
@@ -567,6 +548,7 @@ const TodoApp = () => {
                   onRemoveTodo={removeTodo}
                   onAddSubtask={addSubtask}
                 />
+                <Journal dateKey={dateKey} supabase={supabase} />
               </div>
             );
           })}

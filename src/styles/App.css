@@ -141,7 +141,22 @@
   will-change: background-color, border-color;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
+.todo-item.failed {
+  background-color: rgba(255, 0, 0, 0.1);
+  opacity: 0.7;
+}
 
+.todo-item.failed .todo-input {
+  color: #ff0000;
+}
+
+.todo-item.duplicated {
+  background-color: rgba(255, 255, 0, 0.1);
+}
+
+.todo-item.duplicated .todo-input {
+  color: #806600;
+}
 .todo-item.completed {
   background-color: #dcfce7;
   border-color: #86efac;
@@ -488,4 +503,24 @@
 
 .remove-todo-btn:hover {
   color: var(--danger-color);
+}
+.journal-container {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.journal-container textarea {
+  resize: none; /* Prevent manual resizing */
+  overflow: hidden; /* Hide scrollbars */
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+}
+
+.journal-container textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
