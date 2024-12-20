@@ -221,12 +221,12 @@ const TodoApp = () => {
   const toggleTodo = async (dateKey, todoId, level) => {
     const updateTodoState = (tasks, targetId, newCheckedState) => {
       return tasks.map(task => {
-        if (task.id === targetId) {
-          // Update the task and all its subtasks
+        if (task.id === todoId) {
           const updatedTask = {
             ...task,
             checked: newCheckedState
           };
+          // Update subtasks to match parent's state
           if (task.subtasks?.length) {
             updatedTask.subtasks = task.subtasks.map(subtask => ({
               ...subtask,
@@ -235,10 +235,13 @@ const TodoApp = () => {
           }
           return updatedTask;
         } else if (task.subtasks?.length) {
-          // Recursively update subtasks
+          const updatedSubtasks = updateTodoState(task.subtasks, targetId, newCheckedState);
+          // Check if all subtasks are checked and update parent accordingly
+          const allSubtasksChecked = updatedSubtasks.every(st => st.checked);
           return {
             ...task,
-            subtasks: updateTodoState(task.subtasks, targetId, newCheckedState)
+            checked: allSubtasksChecked,
+            subtasks: updatedSubtasks
           };
         }
         return task;
