@@ -16,7 +16,7 @@
 }
 
 .nav-container {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .nav-controls {
@@ -523,4 +523,103 @@
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+/* Time Progress specific styles */
+.time-progress-container {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-progress-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.time-progress-bar {
+  height: 16px;
+  background-color: #f3f4f6;
+  border-radius: 9999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.time-progress-fill {
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: width 500ms ease;
+}
+
+.time-progress-fill.year {
+  background-color: #3b82f6;
+}
+
+.time-progress-fill.month {
+  background-color: #22c55e;
+}
+
+.time-progress-fill.day {
+  background-color: #eab308;
+}
+
+.time-progress-marks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.time-progress-mark {
+  height: 100%;
+  width: 1px;
+  background-color: rgba(209, 213, 219, 0.8);
+}
+
+.time-progress-mark.highlight {
+  opacity: 0.8;
+}
+
+.time-progress-mark.regular {
+  opacity: 0.3;
+}
+
+/* Task Progress specific styles */
+.task-progress-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.1rem;
+}
+
+.task-progress-bar {
+  flex: 1;
+  height: 10px;
+  background-color: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-right: 1rem;
+}
+
+.task-progress-fill {
+  height: 100%;
+  background-color: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.task-progress-text {
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.time-remaining {
+  display: flex;
+  justify-content: space-between;
+  color: #4b5563;
+  font-size: 0.875rem;
 }

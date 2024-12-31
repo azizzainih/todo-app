@@ -8,6 +8,7 @@ import CalendarPicker from './components/CalendarPicker';
 import HealthTracker from './components/HealthTracker';
 import TodoList from './components/TodoList';
 import Journal from './components/Journal';
+import TimeProgress from './components/TimeProgress';
 
 const TodoApp = () => {
   const [todos, setTodos] = useState({});
@@ -524,6 +525,7 @@ const TodoApp = () => {
             </button>
           </div>
         </div>
+        <TimeProgress />
         <div className="cards-container">
           {[selectedDate, getTomorrowDate(selectedDate)].map((date) => {
             const dateKey = formatDateKey(date);

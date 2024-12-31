@@ -173,14 +173,14 @@ const TodoList = ({
       <button onClick={() => onAddTodo(dateKey)} className="add-todo-btn">
         <Plus className="w-4 h-4" /> Add Todo
       </button>
-      <div className="progress-container">
-        <div className="progress-bar">
-          <div 
-            className="progress-fill" 
+      <div className="task-progress-container">
+      <div className="task-progress-bar">
+        <div 
+            className="task-progress-fill" 
             style={{ width: `${calculateProgress()}%` }}
           />
         </div>
-        <span className="progress-text">{calculateProgress()}%</span>
+        <span className="task-progress-text">{calculateProgress()}%</span>
       </div>
       <Droppable droppableId={dateKey}>
         {(provided) => (
