@@ -1,3 +1,5 @@
+
+// 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
 // TodoApp.js (main component)
 import './styles/App.css';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -483,6 +485,20 @@ const TodoApp = () => {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="app-container">
         <div className="nav-container">
+        <a
+          href="https://expenses-tracker-app-eta.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            textDecoration: 'none',
+            padding: '10px 15px',
+            borderRadius: '5px',
+            fontSize: '14px',
+            whiteSpace: 'nowrap'
+          }}
+        >Exprenses Tracker</a>
           <div className="nav-controls">
             <button
               onClick={() => {
