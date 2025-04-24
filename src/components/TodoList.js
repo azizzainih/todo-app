@@ -1,51 +1,17 @@
-
-import React, { useState, useEffect } from 'react';
-import { Plus, X, ChevronRight, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { Plus, X } from 'lucide-react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 
 const TodoItem = ({ 
   todo, 
   dateKey, 
-  level = 0, 
   onToggleTodo, 
   onUpdateTodo, 
   onRemoveTodo, 
-  onAddSubtask, 
   provided, 
-  snapshot,
-  currentDate
+  snapshot
 }) => {
-  const [expanded, setExpanded] = useState(true);
   
-  const hasSubtasks = todo.subtasks && todo.subtasks.length > 0;
-  const allSubtasksChecked = hasSubtasks && todo.subtasks.every(subtask => subtask.checked);
-  
-  // Determine if task is failed (past date and not completed)
-  const isTaskFailed = !todo.checked && new Date(dateKey) < new Date(currentDate);
-  // Determine if task is duplicated from a failed task
-  const isDuplicatedTask = todo.duplicatedFrom !== undefined;
-  
-  const toggleExpanded = (e) => {
-    e.stopPropagation();
-    setExpanded(!expanded);
-  };
-
-  const renderSubtasks = (subtasks) => {
-    return subtasks.map((subtask) => (
-      <TodoItem
-        key={subtask.id}
-        todo={subtask}
-        dateKey={dateKey}
-        level={level + 1}
-        onToggleTodo={onToggleTodo}
-        onUpdateTodo={onUpdateTodo}
-        onRemoveTodo={onRemoveTodo}
-        onAddSubtask={onAddSubtask}
-        currentDate={currentDate}
-      />
-    ));
-  };
-
   const draggableProps = provided ? {
     ref: provided.innerRef,
     ...provided.draggableProps,
@@ -55,59 +21,31 @@ const TodoItem = ({
   return (
     <div
       {...draggableProps}
-      className={`todo-item 
-        ${snapshot?.isDragging ? 'dragging' : ''} 
-        ${todo.checked ? 'completed' : ''} 
-        ${isTaskFailed ? 'failed' : ''} 
-        ${isDuplicatedTask ? 'duplicated' : ''}`}
-      style={{ 
-        marginLeft: `${level * 1.5}rem`,
+      className={`todo-item ${snapshot?.isDragging ? 'dragging' : ''} ${todo.checked ? 'completed' : ''}`}
+      style={{
         ...provided?.draggableProps?.style
       }}
     >
       <div className="todo-content">
-        {hasSubtasks && (
-          <button onClick={toggleExpanded} className="expand-btn">
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-        )}
         <input
           type="checkbox"
-          checked={todo.checked || allSubtasksChecked}
-          onChange={() => onToggleTodo(dateKey, todo.id, level)}
+          checked={todo.checked}
+          onChange={() => onToggleTodo(dateKey, todo.id)}
           className="todo-checkbox"
-          disabled={isTaskFailed}
         />
         <input
           type="text"
           defaultValue={todo.task}
-          onBlur={(e) => onUpdateTodo(dateKey, todo.id, e.target.value, level)}
+          onBlur={(e) => onUpdateTodo(dateKey, todo.id, e.target.value)}
           className="todo-input"
-          readOnly={isTaskFailed}
         />
-        {!isTaskFailed && (
-          <>
-            <button
-              onClick={() => onAddSubtask(dateKey, todo.id)}
-              className="add-subtask-btn"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => onRemoveTodo(dateKey, todo.id, level)}
-              className="remove-todo-btn"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => onRemoveTodo(dateKey, todo.id)}
+          className="remove-todo-btn"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
-      
-      {hasSubtasks && expanded && (
-        <div className="subtasks">
-          {renderSubtasks(todo.subtasks)}
-        </div>
-      )}
     </div>
   );
 };
@@ -118,35 +56,13 @@ const TodoList = ({
   onAddTodo, 
   onUpdateTodo, 
   onToggleTodo, 
-  onRemoveTodo, 
-  onAddSubtask,
-  currentDate 
+  onRemoveTodo
 }) => {
   const calculateProgress = () => {
     if (!todos[dateKey]?.length) return 0;
     
-    const countCheckedTasks = (tasks) => {
-      return tasks.reduce((acc, task) => {
-        let count = task.checked ? 1 : 0;
-        if (task.subtasks?.length) {
-          count += countCheckedTasks(task.subtasks);
-        }
-        return acc + count;
-      }, 0);
-    };
-
-    const countTotalTasks = (tasks) => {
-      return tasks.reduce((acc, task) => {
-        let count = 1;
-        if (task.subtasks?.length) {
-          count += countTotalTasks(task.subtasks);
-        }
-        return acc + count;
-      }, 0);
-    };
-
-    const checked = countCheckedTasks(todos[dateKey]);
-    const total = countTotalTasks(todos[dateKey]);
+    const checked = todos[dateKey].filter(task => task.checked).length;
+    const total = todos[dateKey].length;
     return Math.round((checked / total) * 100);
   };
   
@@ -174,8 +90,8 @@ const TodoList = ({
         <Plus className="w-4 h-4" /> Add Todo
       </button>
       <div className="task-progress-container">
-      <div className="task-progress-bar">
-        <div 
+        <div className="task-progress-bar">
+          <div 
             className="task-progress-fill" 
             style={{ width: `${calculateProgress()}%` }}
           />
@@ -202,10 +118,8 @@ const TodoList = ({
                     onToggleTodo={onToggleTodo}
                     onUpdateTodo={onUpdateTodo}
                     onRemoveTodo={onRemoveTodo}
-                    onAddSubtask={onAddSubtask}
                     provided={provided}
                     snapshot={snapshot}
-                    currentDate={currentDate}
                   />
                 )}
               </Draggable>
@@ -219,4 +133,3 @@ const TodoList = ({
 };
 
 export default TodoList;
-

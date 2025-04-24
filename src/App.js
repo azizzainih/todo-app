@@ -1,5 +1,3 @@
-
-
 // TodoApp.js (main component)
 import './styles/App.css';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -49,6 +47,7 @@ const TodoApp = () => {
       return 'past';
     }
   };
+  
   const getCardClassName = (date) => {
     const dateType = getDateType(date);
     return `date-card ${dateType}-card`;
@@ -58,17 +57,6 @@ const TodoApp = () => {
     const utcDate = new Date(date);
     utcDate.setUTCHours(UTC_OFFSET, 0, 0, 0);
     return utcDate.toISOString().split('T')[0];
-  };
-
-  const flattenTodos = (todos, parentId = null) => {
-    let flattened = [];
-    todos.forEach(todo => {
-      flattened.push({ ...todo, parent_id: parentId });
-      if (todo.subtasks?.length) {
-        flattened = flattened.concat(flattenTodos(todo.subtasks, todo.id));
-      }
-    });
-    return flattened;
   };
   
   const fetchTodos = useCallback(async () => {
@@ -80,6 +68,7 @@ const TodoApp = () => {
         .from('todos')
         .select('*')
         .in('date', [dateKey, tomorrowKey])
+        .is('parent_id', null) // Only fetch top-level todos
         .order('position');
   
       if (error) {
@@ -87,20 +76,9 @@ const TodoApp = () => {
         return;
       }
   
-      // Organize todos into a hierarchy
-      const organizeSubtasks = (todos, parentId = null) => {
-        const result = todos
-          .filter(todo => todo.parent_id === parentId)
-          .map(todo => ({
-            ...todo,
-            subtasks: organizeSubtasks(todos, todo.id)
-          }));
-        return result;
-      };
-  
       const organizedTodos = {
-        [dateKey]: organizeSubtasks(allTodos.filter(todo => todo.date === dateKey)),
-        [tomorrowKey]: organizeSubtasks(allTodos.filter(todo => todo.date === tomorrowKey))
+        [dateKey]: allTodos.filter(todo => todo.date === dateKey),
+        [tomorrowKey]: allTodos.filter(todo => todo.date === tomorrowKey)
       };
   
       setTodos(organizedTodos);
@@ -200,7 +178,6 @@ const TodoApp = () => {
   };
 
   const updateTodo = async (dateKey, todoId, newValue) => {
-    // ... keep existing updateTodo implementation ...
     try {
       const { error } = await supabase
         .from('todos')
@@ -221,57 +198,19 @@ const TodoApp = () => {
     }
   };
 
-  const toggleTodo = async (dateKey, todoId, level) => {
-    const updateTodoState = (tasks, targetId, newCheckedState) => {
-      return tasks.map(task => {
-        if (task.id === todoId) {
-          const updatedTask = {
-            ...task,
-            checked: newCheckedState
-          };
-          // Update subtasks to match parent's state
-          if (task.subtasks?.length) {
-            updatedTask.subtasks = task.subtasks.map(subtask => ({
-              ...subtask,
-              checked: newCheckedState
-            }));
-          }
-          return updatedTask;
-        } else if (task.subtasks?.length) {
-          const updatedSubtasks = updateTodoState(task.subtasks, targetId, newCheckedState);
-          // Check if all subtasks are checked and update parent accordingly
-          const allSubtasksChecked = updatedSubtasks.every(st => st.checked);
-          return {
-            ...task,
-            checked: allSubtasksChecked,
-            subtasks: updatedSubtasks
-          };
-        }
-        return task;
-      });
-    };
-  
+  const toggleTodo = async (dateKey, todoId) => {
     // Find the current todo and its new state
-    let targetTodo;
-    const findTodo = (tasks) => {
-      for (const task of tasks) {
-        if (task.id === todoId) {
-          targetTodo = task;
-          return;
-        }
-        if (task.subtasks?.length) {
-          findTodo(task.subtasks);
-        }
-      }
-    };
-    findTodo(todos[dateKey]);
-  
+    const targetTodo = todos[dateKey].find(todo => todo.id === todoId);
+    if (!targetTodo) return;
+    
     const newCheckedState = !targetTodo.checked;
   
     // Update UI
     setTodos(prev => ({
       ...prev,
-      [dateKey]: updateTodoState(prev[dateKey], todoId, newCheckedState)
+      [dateKey]: prev[dateKey].map(todo => 
+        todo.id === todoId ? { ...todo, checked: newCheckedState } : todo
+      )
     }));
   
     try {
@@ -286,31 +225,10 @@ const TodoApp = () => {
         // Revert UI state on error
         setTodos(prev => ({
           ...prev,
-          [dateKey]: updateTodoState(prev[dateKey], todoId, !newCheckedState)
+          [dateKey]: prev[dateKey].map(todo => 
+            todo.id === todoId ? { ...todo, checked: !newCheckedState } : todo
+          )
         }));
-      }
-  
-      // If this is a parent task, update all subtasks in the database
-      if (targetTodo.subtasks?.length) {
-        const subtaskIds = [];
-        const collectSubtaskIds = (tasks) => {
-          tasks.forEach(task => {
-            subtaskIds.push(task.id);
-            if (task.subtasks?.length) {
-              collectSubtaskIds(task.subtasks);
-            }
-          });
-        };
-        collectSubtaskIds(targetTodo.subtasks);
-  
-        const { error: subtaskError } = await supabase
-          .from('todos')
-          .update({ checked: newCheckedState })
-          .in('id', subtaskIds);
-  
-        if (subtaskError) {
-          console.error('Error updating subtasks:', subtaskError);
-        }
       }
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -320,25 +238,10 @@ const TodoApp = () => {
   const removeTodo = async (dateKey, todoId) => {
     try {
       // First, update the UI optimistically
-      setTodos(prev => {
-        const updateTodos = (todos) => {
-          return todos.map(todo => {
-            // If this todo has subtasks, recursively check them
-            if (todo.subtasks?.length) {
-              return {
-                ...todo,
-                subtasks: updateTodos(todo.subtasks).filter(t => t.id !== todoId)
-              };
-            }
-            return todo;
-          }).filter(todo => todo.id !== todoId); // Filter out the todo if it matches todoId
-        };
-  
-        return {
-          ...prev,
-          [dateKey]: updateTodos(prev[dateKey] || [])
-        };
-      });
+      setTodos(prev => ({
+        ...prev,
+        [dateKey]: prev[dateKey].filter(todo => todo.id !== todoId)
+      }));
   
       // Then update the database
       const { error } = await supabase
@@ -356,72 +259,6 @@ const TodoApp = () => {
       console.error('Unexpected error:', err);
       // On error, refetch todos to ensure UI is in sync
       fetchTodos();
-    }
-  };
-
-  const addSubtask = async (dateKey, parentId) => {
-    try {
-      // Find the parent task and its current subtasks
-      const findParentTask = (tasks) => {
-        for (const task of tasks) {
-          if (task.id === parentId) {
-            return task;
-          }
-          if (task.subtasks?.length) {
-            const found = findParentTask(task.subtasks);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-  
-      const parentTask = findParentTask(todos[dateKey]);
-      const position = parentTask?.subtasks?.length || 0;
-  
-      const newSubtask = {
-        date: dateKey,
-        task: '',
-        checked: false,
-        parent_id: parentId,
-        position: position
-      };
-  
-      const { data, error } = await supabase
-        .from('todos')
-        .insert([newSubtask])
-        .select();
-  
-      if (error) {
-        console.error('Error adding subtask:', error);
-        return;
-      }
-  
-      setTodos(prev => {
-        const updateSubtasks = (tasks) => {
-          return tasks.map(task => {
-            if (task.id === parentId) {
-              return {
-                ...task,
-                subtasks: [...(task.subtasks || []), ...data]
-              };
-            }
-            if (task.subtasks?.length) {
-              return {
-                ...task,
-                subtasks: updateSubtasks(task.subtasks)
-              };
-            }
-            return task;
-          });
-        };
-  
-        return {
-          ...prev,
-          [dateKey]: updateSubtasks(prev[dateKey] || [])
-        };
-      });
-    } catch (err) {
-      console.error('Unexpected error:', err);
     }
   };
   
@@ -510,7 +347,7 @@ const TodoApp = () => {
             >
               <ChevronLeft />
             </button>
-            <div className="relative inline-block">  {/* Updated this div */}
+            <div className="relative inline-block">
               <button 
                 onClick={() => setShowCalendar(prev => !prev)}
                 className="nav-btn"
@@ -567,7 +404,6 @@ const TodoApp = () => {
                   onUpdateTodo={updateTodo}
                   onToggleTodo={toggleTodo}
                   onRemoveTodo={removeTodo}
-                  onAddSubtask={addSubtask}
                 />
                 <Journal dateKey={dateKey} supabase={supabase} />
               </div>
